@@ -59,6 +59,7 @@ jobs:
           )
  
           echo "$MUTATION"
+          echo "$MY_GITHUB_TOKEN"
  
           RESPONSE=$(curl -s -X POST -H "Authorization: Bearer $MY_GITHUB_TOKEN" \
             -H "Content-Type: application/json" \
