@@ -4,7 +4,7 @@ on:
   pull_request:
  
 jobs:
-  output_check:
+  output_check_2:
     runs-on: ubuntu-latest
  
     steps:
