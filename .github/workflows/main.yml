@@ -5,7 +5,7 @@ on:
     types: [opened, synchronize]  # Trigger the workflow when a PR is created or updated
 
 jobs:
-  create_issue:
+  enable_auto_merge:
     runs-on: ubuntu-latest
 
     steps:
@@ -21,12 +21,10 @@ jobs:
       - name: Authenticate GitHub CLI with PAT
         run: gh auth login --with-token ${{ secrets.PERSONAL_ACCESS_TOKEN }}
 
-      - name: Create a PR-related issue
+      - name: Enable Auto-Merge for PR
         run: |
-          pr_title=$(jq --raw-output .pull_request.title $GITHUB_EVENT_PATH)
-          pr_url=$(jq --raw-output .pull_request.html_url $GITHUB_EVENT_PATH)
-          gh issue create --title "Issue related to PR: $pr_title" --body "This issue is related to PR: $pr_url"
+          pr_number=$(jq --raw-output .pull_request.number $GITHUB_EVENT_PATH)
+          gh pr merge $pr_number --auto
 
-
-      - name: logout
+      - name: Logout GitHub CLI
         run: gh auth logout
