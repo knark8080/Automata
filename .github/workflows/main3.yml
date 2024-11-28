@@ -1,0 +1,12 @@
+name: main
+ 
+on:
+  pull_request:
+ 
+jobs:
+  output_check:
+    runs-on: ubuntu-latest
+ 
+    steps:
+      - name: Run Steps for Workflow B
+        run: echo "Workflow C is running"
