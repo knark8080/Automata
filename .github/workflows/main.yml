@@ -22,9 +22,7 @@ jobs:
         run: gh auth login --with-token ${{ secrets.PERSONAL_ACCESS_TOKEN }}
 
       - name: Enable Auto-Merge for PR
-        run: |
-          pr_number=$(jq --raw-output .pull_request.number $GITHUB_EVENT_PATH)
-          gh pr merge $pr_number --auto
+        run: gh pr merge 3 --auto --merge
 
       - name: Logout GitHub CLI
         run: gh auth logout
