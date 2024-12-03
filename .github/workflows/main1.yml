@@ -9,4 +9,4 @@ jobs:
  
     steps:
       - name: Run Steps for Workflow B
-        run: echo1 "Workflow A is running"
+        run: echo "Workflow A is running"
