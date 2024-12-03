@@ -1,4 +1,4 @@
-name: Review Requested Workflow
+name: Set Required Reviewers to 2 on Review Request
 
 on:
   pull_request:
@@ -6,21 +6,34 @@ on:
       - review_requested
 
 jobs:
-  show-requested-reviewers:
+  set-required-approvals:
     runs-on: ubuntu-latest
-    steps:
-      # Step 1: Check out the repository
-      - name: Check out repository
-        uses: actions/checkout@v4
 
-      # Step 2: Get requested reviewers
-      - name: Display requested reviewers
+    steps:
+      - name: Fetch Branch Protection Rule ID
+        id: fetch_rule
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PERSONAL_ACCESS_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
         run: |
-          echo "Fetching the list of requested reviewers..."
-          curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
-               -H "Accept: application/vnd.github.v3+json" \
-               https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }} \
-               | jq '.requested_reviewers | map(.login) | join(", ")' \
-               || echo "No reviewers requested"
+          # Fetch the branch protection rule ID
+          branch_protection_rule_id=$(curl -s -X POST \
+            -H "Authorization: Bearer $PERSONAL_ACCESS_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d '{"query": "query { repository(owner: \"${{ github.repository_owner }}\", name: \"${{ github.event.repository.name }}\") { branchProtectionRules(first: 1) { nodes { id pattern } } } }"}' \
+            https://api.github.com/graphql | jq -r '.data.repository.branchProtectionRules.nodes[0].id')
+
+          echo "Branch Protection Rule ID: $branch_protection_rule_id"
+          echo "::set-output name=rule_id::$branch_protection_rule_id"
+
+      - name: Set Required Approvals to 2
+        env:
+          PERSONAL_ACCESS_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+        run: |
+          # Update the branch protection rule to set required approvals to 2
+          curl -s -X POST \
+            -H "Authorization: Bearer $PERSONAL_ACCESS_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"query\": \"mutation { updateBranchProtectionRule(input: { branchProtectionRuleId: \\\"${{ steps.fetch_rule.outputs.rule_id }}\\\", requiredApprovingReviewCount: 2 }) { branchProtectionRule { id requiredApprovingReviewCount } } }\"
+            }" \
+            https://api.github.com/graphql
