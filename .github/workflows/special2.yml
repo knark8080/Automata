@@ -1,12 +1,13 @@
-name: Set Required Reviewers to 2 on Review Request
+name: Set Required Approvals to 2
 
 on:
+  workflow_dispatch: # Manually trigger this workflow if needed
   pull_request:
     types:
       - review_requested
 
 jobs:
-  set-required-approvals:
+  update-branch-protection:
     runs-on: ubuntu-latest
 
     steps:
@@ -15,7 +16,7 @@ jobs:
         env:
           PERSONAL_ACCESS_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
         run: |
-          # Fetch the branch protection rule ID
+          # Fetch branch protection rule ID for the default branch
           branch_protection_rule_id=$(curl -s -X POST \
             -H "Authorization: Bearer $PERSONAL_ACCESS_TOKEN" \
             -H "Content-Type: application/json" \
