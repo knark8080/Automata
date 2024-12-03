@@ -1,4 +1,4 @@
-name: Dynamic Approval Update on Review Request
+name: Review Requested Workflow
 
 on:
   pull_request:
@@ -6,40 +6,21 @@ on:
       - review_requested
 
 jobs:
-  update-required-approvals:
+  show-requested-reviewers:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Log Reviewers
-        run: |
-          echo "Requested reviewers: ${{ toJSON(github.event.pull_request.requested_reviewers) }}"
+      # Step 1: Check out the repository
+      - name: Check out repository
+        uses: actions/checkout@v4
 
-      - name: Count Reviewers
-        id: count_reviewers
-        run: |
-          # Count individual reviewers only (exclude teams)
-          requested_reviewers_count=$(echo "${{ toJSON(github.event.pull_request.requested_reviewers) }}" | jq '. | length')
-          echo "Requested reviewers count: $requested_reviewers_count"
-          echo "::set-output name=total_reviewers::$requested_reviewers_count"
-
-      - name: Update Branch Protection Rules
+      # Step 2: Get requested reviewers
+      - name: Display requested reviewers
         env:
-          PERSONAL_ACCESS_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Fetch Branch Protection Rule ID
-          branch_protection_rule_id=$(curl -s -X POST \
-            -H "Authorization: Bearer $PERSONAL_ACCESS_TOKEN" \
-            -H "Content-Type: application/json" \
-            -d '{"query": "query { repository(owner: \"${{ github.repository_owner }}\", name: \"${{ github.event.repository.name }}\") { branchProtectionRules(first: 1) { nodes { id pattern } } } }"}' \
-            https://api.github.com/graphql | jq -r '.data.repository.branchProtectionRules.nodes[0].id')
-
-          echo "Branch Protection Rule ID: $branch_protection_rule_id"
-
-          # Update Required Approvals
-          curl -s -X POST \
-            -H "Authorization: Bearer $PERSONAL_ACCESS_TOKEN" \
-            -H "Content-Type: application/json" \
-            -d "{
-              \"query\": \"mutation { updateBranchProtectionRule(input: { branchProtectionRuleId: \\\"$branch_protection_rule_id\\\", requiredApprovingReviewCount: ${{ steps.count_reviewers.outputs.total_reviewers }} }) { branchProtectionRule { id requiredApprovingReviewCount } } }\"
-            }" \
-            https://api.github.com/graphql
+          echo "Fetching the list of requested reviewers..."
+          curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
+               -H "Accept: application/vnd.github.v3+json" \
+               https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }} \
+               | jq '.requested_reviewers | map(.login) | join(", ")' \
+               || echo "No reviewers requested"
