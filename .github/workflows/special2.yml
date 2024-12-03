@@ -1,28 +1,33 @@
-name: Set Required Approvals to 2
+name: Update Branch Protection Rule
 
 on:
-  workflow_dispatch: # Manually trigger this workflow if needed
-  pull_request:
-    types:
-      - review_requested
+  workflow_dispatch: # Manual trigger
+    inputs:
+      approvals:
+        description: "Number of required approvals"
+        required: false
+        default: "2"
 
 jobs:
   update-branch-protection:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Set Required Approvals to 2
-        env:
-          PERSONAL_ACCESS_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
-        run: |
-          # Replace 'YOUR_BRANCH_RULE_ID' with your branch protection rule ID
-          branch_protection_rule_id=2788173
+      # Step 1: Check out repository
+      - name: Check out repository
+        uses: actions/checkout@v4
 
-          # Update the branch protection rule to set required approvals to 2
-          curl -s -X POST \
-            -H "Authorization: Bearer $PERSONAL_ACCESS_TOKEN" \
-            -H "Content-Type: application/json" \
-            -d "{
-              \"query\": \"mutation { updateBranchProtectionRule(input: { branchProtectionRuleId: \\\"$branch_protection_rule_id\\\", requiredApprovingReviewCount: 2 }) { branchProtectionRule { id requiredApprovingReviewCount } } }\"
-            }" \
-            https://api.github.com/graphql
+      # Step 2: Update branch protection rule
+      - name: Update branch protection rule
+        env:
+          GITHUB_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }} # Use PAT stored in secrets
+        run: |
+          curl -X PUT \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/${{ github.repository }}/branches/main/protection \
+            -d '{
+              "required_pull_request_reviews": {
+                "required_approving_review_count": '${{ github.event.inputs.approvals }}'
+              }
+            }'
