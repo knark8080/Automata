@@ -1,7 +1,7 @@
 name: Update Branch Protection Rule
 
 on:
-  workflow_dispatch: # Manual trigger
+  workflow_dispatch:
     inputs:
       approvals:
         description: "Number of required approvals"
@@ -22,6 +22,17 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }} # Use PAT stored in secrets
         run: |
+          # Retrieve the current branch protection settings
+          protection=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              https://api.github.com/repos/${{ github.repository }}/branches/main/protection)
+
+          # Extract required fields from the current protection settings
+          enforce_admins=$(echo "$protection" | jq -r '.enforce_admins.enabled')
+          required_status_checks=$(echo "$protection" | jq -r '.required_status_checks')
+          restrictions=$(echo "$protection" | jq -r '.restrictions')
+
+          # Update the branch protection rule
           curl -X PUT \
             -H "Authorization: Bearer $GITHUB_TOKEN" \
             -H "Accept: application/vnd.github+json" \
@@ -29,5 +40,10 @@ jobs:
             -d '{
               "required_pull_request_reviews": {
                 "required_approving_review_count": '${{ github.event.inputs.approvals }}'
-              }
+              },
+              "enforce_admins": {
+                "enabled": '$enforce_admins'
+              },
+              "required_status_checks": '$required_status_checks',
+              "restrictions": '$restrictions'
             }'
