@@ -11,30 +11,18 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Fetch Branch Protection Rule ID
-        id: fetch_rule
-        env:
-          PERSONAL_ACCESS_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
-        run: |
-          # Fetch branch protection rule ID for the default branch
-          branch_protection_rule_id=$(curl -s -X POST \
-            -H "Authorization: Bearer $PERSONAL_ACCESS_TOKEN" \
-            -H "Content-Type: application/json" \
-            -d '{"query": "query { repository(owner: \"${{ github.repository_owner }}\", name: \"${{ github.event.repository.name }}\") { branchProtectionRules(first: 1) { nodes { id pattern } } } }"}' \
-            https://api.github.com/graphql | jq -r '.data.repository.branchProtectionRules.nodes[0].id')
-
-          echo "Branch Protection Rule ID: $branch_protection_rule_id"
-          echo "::set-output name=rule_id::$branch_protection_rule_id"
-
       - name: Set Required Approvals to 2
         env:
           PERSONAL_ACCESS_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
         run: |
+          # Replace 'YOUR_BRANCH_RULE_ID' with your branch protection rule ID
+          branch_protection_rule_id=2788173
+
           # Update the branch protection rule to set required approvals to 2
           curl -s -X POST \
             -H "Authorization: Bearer $PERSONAL_ACCESS_TOKEN" \
             -H "Content-Type: application/json" \
             -d "{
-              \"query\": \"mutation { updateBranchProtectionRule(input: { branchProtectionRuleId: \\\"${{ steps.fetch_rule.outputs.rule_id }}\\\", requiredApprovingReviewCount: 2 }) { branchProtectionRule { id requiredApprovingReviewCount } } }\"
+              \"query\": \"mutation { updateBranchProtectionRule(input: { branchProtectionRuleId: \\\"$branch_protection_rule_id\\\", requiredApprovingReviewCount: 2 }) { branchProtectionRule { id requiredApprovingReviewCount } } }\"
             }" \
             https://api.github.com/graphql
