@@ -1,49 +1,29 @@
-name: Update Branch Protection Rule
+name: Change Required Approvals
 
 on:
-  workflow_dispatch:
+   workflow_dispatch:
     inputs:
       approvals:
         description: "Number of required approvals"
-        required: false
-        default: "2"
 
 jobs:
-  update-branch-protection:
+  update-protection-rules:
     runs-on: ubuntu-latest
 
     steps:
-      # Step 1: Check out repository
-      - name: Check out repository
-        uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
-      # Step 2: Update branch protection rule
-      - name: Update branch protection rule
-        env:
-          GITHUB_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }} # Use PAT stored in secrets
+      - name: Set up GitHub CLI
+        uses: github/gh-actions@v2
+
+      - name: Authenticate with GitHub CLI
+        run: gh auth login --with-token < ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update Required Approvals
         run: |
-          # Retrieve the current branch protection settings
-          protection=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
-              -H "Accept: application/vnd.github+json" \
-              https://api.github.com/repos/${{ github.repository }}/branches/main/protection)
-
-          # Extract required fields from the current protection settings
-          enforce_admins=$(echo "$protection" | jq -r '.enforce_admins.enabled')
-          required_status_checks=$(echo "$protection" | jq -r '.required_status_checks')
-          restrictions=$(echo "$protection" | jq -r '.restrictions')
-
-          # Update the branch protection rule
-          curl -X PUT \
-            -H "Authorization: Bearer $GITHUB_TOKEN" \
-            -H "Accept: application/vnd.github+json" \
-            https://api.github.com/repos/${{ github.repository }}/branches/main/protection \
-            -d '{
-              "required_pull_request_reviews": {
-                "required_approving_review_count": '${{ github.event.inputs.approvals }}'
-              },
-              "enforce_admins": {
-                "enabled": '$enforce_admins'
-              },
-              "required_status_checks": '$required_status_checks',
-              "restrictions": '$restrictions'
-            }'
+          gh api --method PATCH /repos/{owner}/{repo}/branches/{branch}/protection \
+          -f required_approving_review_count=2 \
+          -f dismiss_stale_reviews=false \
+          -f require_code_owner_review=false \
+          -f required_review_thread_resolution=true
